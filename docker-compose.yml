@@ -10,6 +10,13 @@ services:
       - "5430:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
+  valkey:
+    image: valkey/valkey:latest
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey_data:/data
 volumes:
   postgres_data:
+  valkey_data:
