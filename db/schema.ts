@@ -7,6 +7,8 @@ export const jobStatusEnum = pgEnum("job_status_enum", [
   "SUCCEEDED",
   "FAILED",
 ]);
+
+export const jobStatusEnumValues = jobStatusEnum.enumValues;    
 export const jobsTable = pgTable("job", {
   id: uuid().primaryKey().defaultRandom(),
   image: text().notNull(),
