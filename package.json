@@ -17,6 +17,7 @@
   "packageManager": "pnpm@10.32.1",
   "dependencies": {
     "bullmq": "^5.71.1",
+    "dockerode": "^4.0.10",
     "dotenv": "^17.3.1",
     "drizzle-orm": "^0.45.1",
     "express": "^5.2.1",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
+    "@types/dockerode": "^4.0.1",
     "@types/express": "^5.0.6",
     "@types/node": "^25.5.0",
     "@types/pg": "^8.18.0",
