@@ -7,7 +7,7 @@ async function init() {
       every: 2 * 1000,
     }),
     jobCriScheduler.upsertJobScheduler("job_cri_scheduler", {
-      every: 10 * 1000,
+      every: 5 * 1000,
     }),
   ]);
 }

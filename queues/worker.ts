@@ -54,6 +54,7 @@ export const jobDispatchWorker = new Worker(
           .update(jobsTable)
           .set({ state: "RUNNABLE" })
           .where(inArray(jobsTable.id, jobIds));
+        console.log(`[JobDispatcher]: Jobs moved to Runnable State`);
       }
     });
   },
@@ -62,6 +63,9 @@ export const jobDispatchWorker = new Worker(
       host: "127.0.0.1",
       port: 6379,
     },
+    concurrency: 1,
+    removeOnComplete: { count: 100 },
+    removeOnFail: { count: 500 },
   }
 );
 
@@ -95,26 +99,42 @@ export const jobCriWorker = new Worker(
           .from(jobsTable)
           .where(eq(jobsTable.id, jobId));
 
-        const checkImageResult = await docker.listImages({
-          filters: { reference: [`${job.image}:latest`] },
-        });
-        console.log(checkImageResult);
-        if (!checkImageResult || checkImageResult.length <= 0) {
-          console.log(`Pulling Image ${job.image}:latest`);
-          await pullImage(`${job.image}:latest`);
-          console.log(`Successfully pulled ${job.image}:latest`);
-        }
+        try {
+          const checkImageResult = await docker.listImages({
+            filters: { reference: [`${job.image}:latest`] },
+          });
+          console.log(checkImageResult);
+          if (!checkImageResult || checkImageResult.length <= 0) {
+            console.log(`Pulling Image ${job.image}:latest`);
+            await pullImage(`${job.image}:latest`);
+            console.log(`Successfully pulled ${job.image}:latest`);
+          }
 
-        const container = await docker.createContainer({
-          Image: `${job.image}:latest`,
-          Tty: false,
-          HostConfig: {
-            AutoRemove: false,
-          },
-          Cmd: job.cmd ? JSON.parse(job.cmd) : undefined,
-        });
-        await container.start();
-        console.log(`Container is UP and Running`);
+          const container = await docker.createContainer({
+            Image: `${job.image}:latest`,
+            Tty: false,
+            HostConfig: {
+              AutoRemove: false,
+            },
+            Cmd: job.cmd ? JSON.parse(job.cmd) : undefined,
+          });
+          await container.start();
+          console.log(`Container is UP and Running`);
+          await tx
+            .update(jobsTable)
+            .set({ state: "RUNNING" })
+            .where(eq(jobsTable.id, job.id));
+          console.log(`[jobCriWorker]: Job ${job.id} state updated to RUNNING`);
+        } catch (error) {
+          console.error(
+            `[jobCriWorker]: Failed to start container for job ${job.id}:`,
+            error
+          );
+          await tx
+            .update(jobsTable)
+            .set({ state: "FAILED" })
+            .where(eq(jobsTable.id, job.id));
+        }
       }
     });
   },
@@ -123,5 +143,8 @@ export const jobCriWorker = new Worker(
       host: "127.0.0.1",
       port: 6379,
     },
+    concurrency: 1,
+    removeOnComplete: { count: 100 },
+    removeOnFail: { count: 500 },
   }
 );
