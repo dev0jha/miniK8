@@ -10,6 +10,15 @@ const docker = new Docker({
   socketPath: isWindows ? "//./pipe/docker_engine" : "/var/run/docker.sock",
 });
 
+function pullImage(image: any): Promise<void> {
+  return new Promise(async (res) => {
+    const stream = await docker.pull(image);
+    docker.modem.followProgress(stream, () => {
+      res();
+    });
+  });
+}
+
 export const jobDispatchWorker = new Worker(
   "job_dispatcher",
   async () => {
@@ -92,32 +101,8 @@ export const jobCriWorker = new Worker(
         console.log(checkImageResult);
         if (!checkImageResult || checkImageResult.length <= 0) {
           console.log(`Pulling Image ${job.image}:latest`);
-          await new Promise<void>((resolve, reject) => {
-            docker.pull(
-              `${job.image}:latest`,
-              (err: Error | null, stream: NodeJS.ReadableStream) => {
-                if (err) {
-                  console.error(`Failed to pull image: ${err.message}`);
-                  reject(err);
-                  return;
-                }
-                docker.modem.followProgress(
-                  stream,
-                  (progressErr: Error | null) => {
-                    if (progressErr) {
-                      console.error(
-                        `Pull progress error: ${progressErr.message}`
-                      );
-                      reject(progressErr);
-                    } else {
-                      console.log(`Successfully pulled ${job.image}:latest`);
-                      resolve();
-                    }
-                  }
-                );
-              }
-            );
-          });
+          await pullImage(`${job.image}:latest`);
+          console.log(`Successfully pulled ${job.image}:latest`);
         }
 
         const container = await docker.createContainer({
